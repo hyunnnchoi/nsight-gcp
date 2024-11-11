@@ -61,7 +61,7 @@ spec:
               type: DirectoryOrCreate
 
           nodeSelector:
-            kubernetes.io/hostname: xsailor-worker2
+            kubernetes.io/hostname: xsailor-worker7
     CONTROLLER:
       replicas: 1
       template:
@@ -103,4 +103,4 @@ spec:
               medium: Memory
               sizeLimit: "8G"
           nodeSelector:
-            kubernetes.io/hostname: xsailor-worker2
+            kubernetes.io/hostname: xsailor-worker7
