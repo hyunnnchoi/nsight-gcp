@@ -19,12 +19,12 @@ spec:
                   - key: kubernetes.io/hostname
                     operator: In
                     values:
-                    - xsailor-master  # 첫 번째 Worker는 xsailor-worker1에 배치
+                    - xsailor-worker6  # 첫 번째 Worker는 xsailor-worker1에 배치
                 - matchExpressions:
                   - key: kubernetes.io/hostname
                     operator: In
                     values:
-                    - xsailor-worker2  # 두 번째 Worker는 xsailor-worker2에 배치
+                    - xsailor-worker7  # 두 번째 Worker는 xsailor-worker7에 배치
           containers:
           - name: tensorflow
             command: ["/bin/sh", "-c"]
@@ -75,7 +75,7 @@ spec:
           # nodeSelector:
           #   twonode: worker
           # nodeSelector:
-          #   kubernetes.io/hostname: xsailor-worker2
+          #   kubernetes.io/hostname: xsailor-worker7
     CONTROLLER:
       replicas: 1
       template:
