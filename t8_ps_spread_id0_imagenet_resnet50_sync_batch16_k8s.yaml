@@ -25,7 +25,7 @@ spec:
                 echo "t8_id0_imagenet_resnet50_sync_batch16" > /tf_cnn_benchmarks/model.txt;
                 STARTTIME=`date "+%H:%M:%S.%N"`;
                 echo "$STARTTIME" > /result/t8_id0_imagenet_resnet50_sync_batch16/t8_id0_imagenet_resnet50_sync_batch16_${JOB}_start_time.txt;
-                nsys profile --duration=600 -o /result/t8_id0_imagenet_resnet50_sync_batch16/t8_id0_imagenet_resnet50_sync_batch16_${JOB} --force-overwrite true python /tf_cnn_benchmarks/tf_cnn_benchmarks.py --variable_update=parameter_server --model=resnet50 --data_name=imagenet --display_every=1 --batch_size=16 --cross_replica_sync=true --num_batches=10 --num_warmup_batches=0;
+                nsys profile --duration=90 -o /result/t8_id0_imagenet_resnet50_sync_batch16/t8_id0_imagenet_resnet50_sync_batch16_${JOB} --force-overwrite true python /tf_cnn_benchmarks/tf_cnn_benchmarks.py --variable_update=parameter_server --model=resnet50 --data_name=imagenet --display_every=1 --batch_size=16 --cross_replica_sync=true --num_batches=10 --num_warmup_batches=0;
                 ENDTIME=`date "+%H:%M:%S.%N"`;
                 echo "$ENDTIME" > /result/t8_id0_imagenet_resnet50_sync_batch16/t8_id0_imagenet_resnet50_sync_batch16_${JOB}_end_time.txt
             ports:
