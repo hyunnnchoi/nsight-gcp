@@ -37,7 +37,7 @@ spec:
                 echo "t6_id2_cifar10_alexnet_sync_batch16" > /tf_cnn_benchmarks/model.txt;
                 STARTTIME=`date "+%H:%M:%S.%N"`;
                 echo "$STARTTIME" > /result/t6_id2_cifar10_alexnet_sync_batch16/t6_id2_cifar10_alexnet_sync_batch16_${JOB}_start_time.txt;
-                nsys profile --duration=240 -o /result/t6_id2_cifar10_alexnet_sync_batch16/t6_id1_imagenet_alexnet_sync_batch16_${JOB} --force-overwrite true python /tf_cnn_benchmarks/tf_cnn_benchmarks.py --variable_update=distributed_all_reduce --model=alexnet --data_name=cifar10 --display_every=1 --batch_size=16 --cross_replica_sync=true --num_batches=10 --num_warmup_batches=0  --controller_host=${CONTROLLER_HOST} --all_reduce_spec=nccl/xring;
+                nsys profile --duration=150 -o /result/t6_id2_cifar10_alexnet_sync_batch16/t6_id1_imagenet_alexnet_sync_batch16_${JOB} --force-overwrite true python /tf_cnn_benchmarks/tf_cnn_benchmarks.py --variable_update=distributed_all_reduce --model=alexnet --data_name=cifar10 --display_every=1 --batch_size=16 --cross_replica_sync=true --num_batches=10 --num_warmup_batches=0  --controller_host=${CONTROLLER_HOST} --all_reduce_spec=nccl/xring;
                 sync;
                 ENDTIME=`date "+%H:%M:%S.%N"`;
                 echo "$ENDTIME" > /result/t6_id2_cifar10_alexnet_sync_batch16/t6_id2_cifar10_alexnet_sync_batch16_${JOB}_end_time.txt
