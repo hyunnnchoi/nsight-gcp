@@ -1,0 +1,109 @@
+# Trace 9: PS / vgg16 / colo
+
+apiVersion: kubeflow.org/v1
+kind: "TFJob"
+metadata:
+  name: t9-id1-imagenet-vgg16-sync-batch16
+spec:
+  runPolicy:
+    cleanPodPolicy: None
+  tfReplicaSpecs:
+    WORKER:
+      replicas: 2
+      template:
+        spec:
+          containers:
+          - name: tensorflow
+            command: ["/bin/sh", "-c"]
+            args:
+              - cd /tf_cnn_benchmarks/NVML;
+                make;
+                JOB=`python /tf_cnn_benchmarks/job_name.py`;
+                CONTROLLER_HOST=`python -c "import os, json; tf_config = json.loads(os.environ.get('TF_CONFIG') or '{}'); cluster_config = tf_config.get('cluster', {}); controller_host = cluster_config.get('controller'); print(','.join(controller_host))"`;
+                mkdir -p /result/t9_id1_imagenet_vgg16_sync_batch16;
+                top -d 0.1 -b | grep tf_cnn > /result/t9_id1_imagenet_vgg16_sync_batch16/t9_id1_imagenet_vgg16_sync_batch16_${JOB}_cpu.txt &
+                echo "t9_id1_imagenet_vgg16_sync_batch16" > /tf_cnn_benchmarks/model.txt;
+                STARTTIME=`date "+%H:%M:%S.%N"`;
+                echo "$STARTTIME" > /result/t9_id1_imagenet_vgg16_sync_batch16/t9_id1_imagenet_vgg16_sync_batch16_${JOB}_start_time.txt;
+                nsys profile --duration=120 -o /result/t9_id1_imagenet_vgg16_sync_batch16/t9_id1_imagenet_vgg16_sync_batch16${JOB} --force-overwrite true python /tf_cnn_benchmarks/tf_cnn_benchmarks.py --variable_update=parameter_server --model=vgg16 --data_name=imagenet --display_every=1 --batch_size=16 --cross_replica_sync=true --num_batches=10 --num_warmup_batches=0;
+                ENDTIME=`date "+%H:%M:%S.%N"`;
+                echo "$ENDTIME" > /result/t9_id1_imagenet_vgg16_sync_batch16/t9_id1_imagenet_vgg16_sync_batch16_${JOB}_end_time.txt
+            ports:
+            - containerPort: 2222
+              name: tfjob-port
+            image: potato4332/tf2-gpu-docker:0.4.0
+            imagePullPolicy: IfNotPresent
+            resources:
+              requests:
+                cpu: 1
+              limits:
+                cpu: 5
+                nvidia.com/gpu: 1
+            volumeMounts:
+            - mountPath: /result
+              name: tfjob-data
+            - mountPath: /dev/shm
+              name: shmdir
+            - mountPath: /host_output
+              name: host-output  # HostPath 볼륨 마운트
+          volumes:
+          - name: tfjob-data
+            persistentVolumeClaim:
+              claimName: tfjob-data-volume-claim
+          - name: shmdir
+            emptyDir:
+              medium: Memory
+              sizeLimit: "8G"
+          - name: host-output
+            hostPath:
+              path: /home/jhlee21/hmchoi  # 호스트의 디렉토리 경로
+              type: DirectoryOrCreate
+          nodeSelector:
+            kubernetes.io/hostname: xsailor-worker2
+    PS:
+      replicas: 2
+      template:
+        spec:
+          containers:
+          - name: tensorflow
+            command: ["/bin/sh", "-c"]
+            args:
+              - JOB=`python /tf_cnn_benchmarks/job_name.py`;
+                CONTROLLER_HOST=`python -c "import os, json; tf_config = json.loads(os.environ.get('TF_CONFIG') or '{}'); cluster_config = tf_config.get('cluster', {}); controller_host = cluster_config.get('controller'); print(','.join(controller_host))"`;
+                mkdir -p /result/t9_id1_imagenet_vgg16_sync_batch16;
+                echo "t9_id1_imagenet_vgg16_sync_batch16" > /tf_cnn_benchmarks/model.txt;
+                top -d 0.1 -b | grep tf_cnn > /result/t9_id1_imagenet_vgg16_sync_batch16/t9_id1_imagenet_vgg16_sync_batch16_${JOB}_cpu.txt &
+                python /tf_cnn_benchmarks/tf_cnn_benchmarks.py --variable_update=parameter_server --model=vgg16 --data_name=imagenet --display_every=1 --batch_size=16 --cross_replica_sync=true --num_batches=10 --num_warmup_batches=0;
+                ENDTIME=`date "+%H:%M:%S.%N"`;
+                echo "$ENDTIME" > /result/t9_id1_imagenet_vgg16_sync_batch16/t9_id1_imagenet_vgg16_sync_batch16_${JOB}_end_time.txt
+            ports:
+            - containerPort: 2222
+              name: tfjob-port
+            image: potato4332/tf2-cpu-docker:0.4.0
+            imagePullPolicy: IfNotPresent
+            resources:
+              requests:
+                cpu: 1
+              limits:
+                cpu: 5
+            volumeMounts:
+            - mountPath: /result
+              name: tfjob-data
+            - mountPath: /dev/shm
+              name: shmdir
+            - mountPath: /host_output
+              name: host-output  # HostPath 볼륨 마운트
+          volumes:
+          - name: tfjob-data
+            persistentVolumeClaim:
+              claimName: tfjob-data-volume-claim
+          - name: shmdir
+            emptyDir:
+              medium: Memory
+              sizeLimit: "8G"
+          - name: host-output
+            hostPath:
+              path: /home/jhlee21/hmchoi  # 호스트의 디렉토리 경로
+              type: DirectoryOrCreate
+          nodeSelector:
+            kubernetes.io/hostname: xsailor-worker2
