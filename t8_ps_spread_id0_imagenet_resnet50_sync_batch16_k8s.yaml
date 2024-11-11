@@ -61,8 +61,8 @@ spec:
                   - key: kubernetes.io/hostname
                     operator: In
                     values:
-                    - xsailor-master
-                    - xsailor-worker2
+                    - xsailor-worker6
+                    - xsailor-worker7
           volumes:
           - name: tfjob-data
             persistentVolumeClaim:
@@ -123,8 +123,8 @@ spec:
                   - key: kubernetes.io/hostname
                     operator: In
                     values:
-                    - xsailor-master
-                    - xsailor-worker2
+                    - xsailor-worker6
+                    - xsailor-worker7
           volumes:
           - name: tfjob-data
             persistentVolumeClaim:
