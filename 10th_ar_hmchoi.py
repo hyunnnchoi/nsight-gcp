@@ -1,6 +1,3 @@
-# Changes
-# - FCFS-based execution
-# - job 배치된 노드 기록
 
 import sys
 import argparse
