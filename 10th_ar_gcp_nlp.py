@@ -1,3 +1,6 @@
+# Changes
+# - FCFS-based execution
+# - job 배치된 노드 기록
 
 import sys
 import argparse
@@ -6,7 +9,7 @@ import os
 # Xsailor local vs. GCP
 role = os.getenv('ROLE', 'worker')  # 기본값은 worker
 
-is_GCP = False
+is_GCP = True
 nodes = []
 if is_GCP:
     nodes = ['xsailor-worker-t6', 'xsailor-worker-t7', 'xsailor-worker-t8', 'xsailor-worker-t9']
@@ -31,7 +34,7 @@ print(f'Training with total gpu num: {total_gpu_num}')
 #                ('inception3', 3, 207), ('googlenet', 3, 235)]
 
 # Nov12trace_ar.txt
-train_trace = [('alexnet', 2, 10), ('alexnet', 3, 10), ('alexnet', 4, 10), ('resnet110', 2, 10), ('resnet110', 3, 10), ('resnet110', 4, 10), ('resnet44', 2, 10), ('resnet44', 3, 10), ('resnet44', 4, 10), ('resnet56', 2, 10), ('resnet56', 3, 10), ('resnet56', 4, 10), ('densenet40_k12', 2, 10), ('densenet40_k12', 3, 10), ('densenet40_k12', 4, 10), ('googlenet', 2, 10), ('googlenet', 3, 10), ('googlenet', 4, 10), ('densenet100_k12', 2, 10), ('densenet100_k12', 3, 10), ('densenet100_k12', 4, 10), ('vgg16', 2, 10), ('vgg16', 3, 10), ('vgg16', 4, 10), ('resnet50', 2, 10), ('resnet50', 3, 10), ('resnet50', 4, 10), ('inception3', 2, 10), ('inception3', 3, 10), ('inception3', 4, 10), ('bert', 2, 10), ('bert', 3, 10), ('bert', 4, 10), ('gpt2', 2, 10), ('gpt2', 3, 10), ('gpt2', 4, 10) ]
+train_trace = [ ('bert', 2, 10), ('bert', 3, 10), ('bert', 4, 10), ('gpt2', 2, 10), ('gpt2', 3, 10), ('gpt2', 4, 10) ]
 
 
 CIFAR10_model = ("densenet40_k12", "densenet100_k12", "densenet100_k24","resnet20", "resnet32", "resnet44", "resnet56", "resnet110", "alexnet")
@@ -114,7 +117,7 @@ model_skewness = {
     "densenet40_k12": "1.9",
 }
 
-cpu_image="potato4332/tf2-cpu-docker:0.4.0"
+cpu_image="potato4332/tf2-cpu-docker:0.5.0"
 gpu_image="potato4332/tf2-gpu-docker:0.4.0"
 squad_nlp_gpu_image = "chiefmate/nlp-keras:0.0.1x"
 
@@ -275,8 +278,7 @@ spec:
                 echo "{job_name_ub}" > /workspace/model.txt;
                 STARTTIME=`date "+%H:%M:%S.%N"`; echo "$STARTTIME" > /result/{job_name_ub}/{job_name_ub}_${{JOB}}_start_time.txt;
                 top -d 0.1 -b | grep python > /result/{job_name_ub}/{job_name_ub}_${{JOB}}_cpu.txt
-                & python /workspace/nlp_jobs/{model_name}_dist_squad.py
-                > /result/{job_name_ub}/{job_name_ub}_${{JOB}}_log.txt;
+                & nsys profile --duration=720 -o /result/{job_name_ub}/{job_name_ub}_${{JOB}} --force-overwrite true python /workspace/nlp_jobs/{model_name}_dist_squad.py;
                 ENDTIME=`date "+%H:%M:%S.%N"`; echo "$ENDTIME" > /result/{job_name_ub}/{job_name_ub}_${{JOB}}_end_time.txt
             ports:
               - containerPort: 2222
@@ -384,8 +386,7 @@ spec:
                 echo "{job_name_ub}" > /workspace/model.txt;
                 STARTTIME=`date "+%H:%M:%S.%N"`; echo "$STARTTIME" > /result/{job_name_ub}/{job_name_ub}_${{JOB}}_start_time.txt;
                 top -d 0.1 -b | grep python > /result/{job_name_ub}/{job_name_ub}_${{JOB}}_cpu.txt
-                & python /workspace/nlp_jobs/{model_name}_{'dist' if worker_num > 1 else 'single'}_squad.py
-                > /result/{job_name_ub}/{job_name_ub}_${{JOB}}_log.txt;
+                & nsys profile --duration=720 -o /result/{job_name_ub}/{job_name_ub}_${{JOB}} --force-overwrite true python /workspace/nlp_jobs/{model_name}_{'dist' if worker_num > 1 else 'single'}_squad.py;
                 ENDTIME=`date "+%H:%M:%S.%N"`; echo "$ENDTIME" > /result/{job_name_ub}/{job_name_ub}_${{JOB}}_end_time.txt
             ports:
               - containerPort: 2222
@@ -449,13 +450,13 @@ def generate_cnn_tfjob_yaml(job_name, job_config):
 
     if worker_num > 1:
         # WORKER Command: nsys 포함
-        worker_command = f'nsys profile --duration=120 -o /result/{job_name_ub}/{job_name_ub}_${{JOB}} --force-overwrite true python /tf_cnn_benchmarks/tf_cnn_benchmarks.py --variable_update=distributed_all_reduce --model={model_name} --data_name={dataset_name} --display_every=1 --batch_size={batch_size} --cross_replica_sync=true --num_batches={num_batches} --num_warmup_batches=0 --controller_host=${{CONTROLLER_HOST}} --all_reduce_spec=nccl/xring;'
+        worker_command = f'nsys profile --duration=200 -o /result/{job_name_ub}/{job_name_ub}_${{JOB}} --force-overwrite true python /tf_cnn_benchmarks/tf_cnn_benchmarks.py --variable_update=distributed_all_reduce --model={model_name} --data_name={dataset_name} --display_every=1 --batch_size={batch_size} --cross_replica_sync=true --num_batches={num_batches} --num_warmup_batches=0 --controller_host=${{CONTROLLER_HOST}} --all_reduce_spec=nccl/xring;'
 
         # CONTROLLER Command: nsys 제거
         controller_command = f'python /tf_cnn_benchmarks/tf_cnn_benchmarks.py --variable_update=distributed_all_reduce --model={model_name} --data_name={dataset_name} --display_every=1 --batch_size={batch_size} --cross_replica_sync=true --num_batches={num_batches} --num_warmup_batches=0 --controller_host=${{CONTROLLER_HOST}} --all_reduce_spec=nccl/xring > /result/{job_name_ub}/{job_name_ub}_${{JOB}}_log.txt;'
     else:
         # Single WORKER Case
-        worker_command = f'nsys profile --duration=120 -o /result/{job_name_ub}/{job_name_ub}_${{JOB}} --force-overwrite true python /tf_cnn_benchmarks/tf_cnn_benchmarks.py --variable_update=replicated --model={model_name} --data_name={dataset_name} --display_every=1 --batch_size={batch_size} --num_batches={num_batches} --num_warmup_batches=0;'
+        worker_command = f'nsys profile --duration=200 -o /result/{job_name_ub}/{job_name_ub}_${{JOB}} --force-overwrite true python /tf_cnn_benchmarks/tf_cnn_benchmarks.py --variable_update=replicated --model={model_name} --data_name={dataset_name} --display_every=1 --batch_size={batch_size} --num_batches={num_batches} --num_warmup_batches=0;'
 
     tfjob_template = f'''apiVersion: kubeflow.org/v1
 kind: "TFJob"
