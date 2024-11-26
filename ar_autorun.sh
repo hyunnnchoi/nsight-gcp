@@ -3,7 +3,7 @@
 # Job 파일들이 있는 경로 설정
 JOB_DIR="./"
 # Job 파일들의 이름 패턴 (t{번호} 순서대로 실행)
-JOB_FILES=($(ls ${JOB_DIR}t*.yaml | sort -V))
+JOB_FILES=($(ls ${JOB_DIR}a*.yaml | sort -V))
 
 # 모든 Job 파일 순서대로 실행
 for job_file in "${JOB_FILES[@]}"; do
@@ -44,4 +44,3 @@ for job_file in "${JOB_FILES[@]}"; do
     done
 done
 
-echo "All jobs completed!"
