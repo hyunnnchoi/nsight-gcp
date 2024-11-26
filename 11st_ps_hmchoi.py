@@ -164,7 +164,7 @@ def create_job_config(id, model, worker_num, iter_num):
     job_name_no_id = f"{dataset}_{model}_sync_batch{batch_size * worker_num}"
     bandwidth = model_bandwidth.get(job_name_no_id, "0")
 
-    job_name = f"t{id}-{dataset}-{model}-sync-batch{batch_size * worker_num}"  # worker_num includes chief worker (BERT, GPT2)
+    job_name = f"p{id}-{dataset}-{model}-sync-batch{batch_size * worker_num}"  # worker_num includes chief worker (BERT, GPT2)
     config = {
         'model_name': model,
         'dataset_name': dataset,
