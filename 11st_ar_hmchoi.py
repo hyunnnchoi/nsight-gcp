@@ -173,7 +173,7 @@ def create_job_config(id, model, worker_num, iter_num):
     if bandwidth == 0:
         print(f'[WARNING] job {id}_{job_name_no_id}\'s bandwidth is zero')
 
-    job_name = f"t{id}-{dataset}-{model}-sync-batch{batch_size * worker_num}"  # worker_num includes chief worker (BERT, GPT2)
+    job_name = f"a{id}-{dataset}-{model}-sync-batch{batch_size * worker_num}"  # worker_num includes chief worker (BERT, GPT2)
     config = {
         'model_name': model,
         'dataset_name': dataset,
