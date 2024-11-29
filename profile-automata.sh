@@ -1,39 +1,31 @@
 #!/bin/bash
 
-# 작업 디렉토리 설정
 BASE_DIR=$(pwd)
 NSYS_REP_DIR="$BASE_DIR/nsys-rep-combined"
-OUTPUT_DIR="$BASE_DIR/nsys-processed"  # 처리 결과 저장 디렉토리
-FINAL_EXCEL_FILE="$OUTPUT_DIR/combined_results.xlsx"  # 최종 통합 파일
+OUTPUT_DIR="$BASE_DIR/nsys-processed"
+FINAL_EXCEL_FILE="$OUTPUT_DIR/combined_results.xlsx"
 
-# Step 0: worker_0.nsys-rep 파일 이동
 echo "Step 0: Moving all worker_0.nsys-rep files to $NSYS_REP_DIR..."
 mkdir -p "$NSYS_REP_DIR"
 find "$BASE_DIR" -type f -name "*worker_0.nsys-rep" -exec cp {} "$NSYS_REP_DIR" \;
 echo "All worker_0.nsys-rep files have been moved to $NSYS_REP_DIR!"
 
-# 결과 디렉토리 생성
 mkdir -p "$OUTPUT_DIR"
 
-# 모든 .nsys-rep 파일 순회
 for nsys_file in $(ls "$NSYS_REP_DIR"/*.nsys-rep | sort -V); do
-    # 파일 이름과 디렉토리 추출
     full_file_name=$(basename "$nsys_file" .nsys-rep)
-    sqlite_file="$NSYS_REP_DIR/$full_file_name.sqlite"  # sqlite 파일이 생성될 위치
+    sqlite_file="$NSYS_REP_DIR/$full_file_name.sqlite"
     csv_file="$OUTPUT_DIR/$full_file_name.csv"
     csv_with_hij="$OUTPUT_DIR/${full_file_name}_with_hij.xlsx"
 
     echo "Processing: $full_file_name"
 
-    # Step 1: .nsys-rep -> .sqlite 변환
     nsys stats "$nsys_file" -o "$sqlite_file" --force-export=true
 
-    # Step 2: sqlite 파일에서 GPU gaps 추출 및 CSV 저장
     nsys analyze -r "gpu_gaps:gap=1:rows=5000" "$sqlite_file" | \
     tail -n +3 | sort -k 3 -n | \
     awk 'BEGIN {print "Row#,Duration,Start,PID,Device ID,Context ID"} NR < 1 || NR > 14 {print $1","$2","$3","$4","$5","$6}' > "$csv_file"
 
-    # Step 3: CSV 파일에 H, I, J 열 추가 및 Excel 파일로 변환
     python3 - <<EOF
 import pandas as pd
 from openpyxl import Workbook, load_workbook
@@ -58,14 +50,14 @@ wb = load_workbook(output_excel)
 ws = wb.active
 
 ws["N3"] = "COMPUTE TIME"
-ws["O3"] = "=SUM(I:I)"  # Compute time in nanoseconds
+ws["O3"] = "=SUM(I:I)"
 ws["N4"] = "NETWORK TIME"
-ws["O4"] = "=SUM(G:G)"  # Network time in nanoseconds
+ws["O4"] = "=SUM(G:G)"
 
 ws["N10"] = "COMPUTE/10 (s)"
-ws["O10"] = "=O3/1000000000/10"  # Compute time in seconds divided by 10
+ws["O10"] = "=O3/1000000000/10"
 ws["N11"] = "NETWORK/10 (s)"
-ws["O11"] = "=O4/1000000000/10"  # Network time in seconds divided by 10
+ws["O11"] = "=O4/1000000000/10"
 
 for cell in ["N3", "N4", "N10", "N11"]:
     ws[cell].alignment = Alignment(horizontal="center")
@@ -78,7 +70,6 @@ EOF
     echo "Completed: $full_file_name"
 done
 
-# Step 4: 모든 Excel 파일을 하나의 파일로 통합 및 Summary 시트 추가
 echo "Step 4: Combining all Excel files into one with Summary sheet..."
 
 python3 - <<EOF
