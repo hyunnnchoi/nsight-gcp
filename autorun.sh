@@ -23,12 +23,27 @@ for job_file in "${JOB_FILES[@]}"; do
         kubectl get pods --no-headers | grep "${job_number}"
         
         if [[ "${job_file}" == a*.yaml ]]; then
-            CONTROLLER_COMPLETED=$(kubectl get pods --no-headers | grep "${job_number}" | grep "controller-0" | grep "Completed" | wc -l)
-            if [ "${CONTROLLER_COMPLETED}" -gt 0 ]; then
-                echo "Controller pod for job ${job_number} is Completed."
-                echo "Deleting job: ${job_file}"
-                kubectl delete -f "${job_file}"
-                break
+            CONTROLLER_EXISTS=$(kubectl get pods --no-headers | grep "${job_number}" | grep "controller" | wc -l)
+            if [ "${CONTROLLER_EXISTS}" -gt 0 ]; then
+                CONTROLLER_COMPLETED=$(kubectl get pods --no-headers | grep "${job_number}" | grep "controller" | grep "Completed" | wc -l)
+                if [ "${CONTROLLER_COMPLETED}" -gt 0 ]; then
+                    echo "Controller pod for job ${job_number} is Completed."
+                    echo "Deleting job: ${job_file}"
+                    kubectl delete -f "${job_file}"
+                    break
+                fi
+            else
+                COMPLETED_WORKERS=$(kubectl get pods --no-headers | grep "${job_number}" | grep "worker" | grep "Completed" | wc -l)
+                TOTAL_WORKERS=$(kubectl get pods --no-headers | grep "${job_number}" | grep "worker" | wc -l)
+
+                echo "Debug: Completed workers: ${COMPLETED_WORKERS} / Total workers: ${TOTAL_WORKERS}"
+
+                if [ "${COMPLETED_WORKERS}" -eq "${TOTAL_WORKERS}" ] && [ "${TOTAL_WORKERS}" -gt 0 ]; then
+                    echo "All worker pods for job ${job_number} are Completed."
+                    echo "Deleting job: ${job_file}"
+                    kubectl delete -f "${job_file}"
+                    break
+                fi
             fi
         else
             COMPLETED_WORKERS=$(kubectl get pods --no-headers | grep "${job_number}" | grep "worker" | grep "Completed" | wc -l)
