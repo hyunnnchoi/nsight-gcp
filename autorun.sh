@@ -23,29 +23,37 @@ for job_file in "${JOB_FILES[@]}"; do
         kubectl get pods --no-headers | grep "${job_number}"
         
         if [[ "${job_file}" == a*.yaml ]]; then
+            # Check if controller-0 exists
             CONTROLLER_EXISTS=$(kubectl get pods --no-headers | grep "${job_number}" | grep "controller-0" | wc -l)
+            echo "Debug: Controller exists: ${CONTROLLER_EXISTS}"
+            
             if [ "${CONTROLLER_EXISTS}" -gt 0 ]; then
+                # If controller-0 exists, check if it's completed
                 CONTROLLER_COMPLETED=$(kubectl get pods --no-headers | grep "${job_number}" | grep "controller-0" | grep "Completed" | wc -l)
+                echo "Debug: Controller completed: ${CONTROLLER_COMPLETED}"
+
                 if [ "${CONTROLLER_COMPLETED}" -eq "${CONTROLLER_EXISTS}" ]; then
                     echo "Controller pod for job ${job_number} is Completed."
                     echo "Deleting job: ${job_file}"
                     kubectl delete -f "${job_file}"
                     break
                 fi
-            else
-                COMPLETED_WORKERS=$(kubectl get pods --no-headers | grep "${job_number}" | grep "worker" | grep "Completed" | wc -l)
-                TOTAL_WORKERS=$(kubectl get pods --no-headers | grep "${job_number}" | grep "worker" | wc -l)
+            fi
 
-                echo "Debug: Completed workers: ${COMPLETED_WORKERS} / Total workers: ${TOTAL_WORKERS}"
+            # If no controller-0 or it's not completed, check workers
+            COMPLETED_WORKERS=$(kubectl get pods --no-headers | grep "${job_number}" | grep "worker" | grep "Completed" | wc -l)
+            TOTAL_WORKERS=$(kubectl get pods --no-headers | grep "${job_number}" | grep "worker" | wc -l)
 
-                if [ "${COMPLETED_WORKERS}" -eq "${TOTAL_WORKERS}" ] && [ "${TOTAL_WORKERS}" -gt 0 ]; then
-                    echo "All worker pods for job ${job_number} are Completed."
-                    echo "Deleting job: ${job_file}"
-                    kubectl delete -f "${job_file}"
-                    break
-                fi
+            echo "Debug: Completed workers: ${COMPLETED_WORKERS} / Total workers: ${TOTAL_WORKERS}"
+
+            if [ "${COMPLETED_WORKERS}" -eq "${TOTAL_WORKERS}" ] && [ "${TOTAL_WORKERS}" -gt 0 ]; then
+                echo "All worker pods for job ${job_number} are Completed."
+                echo "Deleting job: ${job_file}"
+                kubectl delete -f "${job_file}"
+                break
             fi
         else
+            # For p*.yaml jobs
             COMPLETED_WORKERS=$(kubectl get pods --no-headers | grep "${job_number}" | grep "worker" | grep "Completed" | wc -l)
             TOTAL_WORKERS=$(kubectl get pods --no-headers | grep "${job_number}" | grep "worker" | wc -l)
 
