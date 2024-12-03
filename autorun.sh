@@ -25,11 +25,8 @@ for job_file in "${JOB_FILES[@]}"; do
         echo "${POD_OUTPUT}"
 
         if [[ "${job_file}" == a*.yaml ]]; then
-            # Check if any controller pod exists
+            # Check for controller pods
             CONTROLLER_POD=$(echo "${POD_OUTPUT}" | grep "controller")
-            echo "Debug: Controller pod output:"
-            echo "${CONTROLLER_POD}"
-            
             CONTROLLER_EXISTS=$(echo "${CONTROLLER_POD}" | wc -l)
             echo "Debug: Controller exists count: ${CONTROLLER_EXISTS}"
 
