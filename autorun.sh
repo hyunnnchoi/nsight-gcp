@@ -19,19 +19,22 @@ for job_file in "${JOB_FILES[@]}"; do
     job_number=$(basename "${job_file}" .yaml | grep -oE '^t[0-9]+')
 
     while true; do
-        echo "Debug: Checking all pods related to job ${job_number}"
-        POD_OUTPUT=$(kubectl get pods --no-headers | grep "${job_number}")
-        echo "Debug: Pod output:"
-        echo "${POD_OUTPUT}"
-
+        echo "Debug: Fetching all pods related to job ${job_number}"
+        POD_OUTPUT=$(kubectl get pods -A --no-headers | grep "${job_number}")
+        
+        echo "Debug: Raw pod output:"
+        echo "${POD_OUTPUT}" # 디버깅용 출력
+        
         if [[ "${job_file}" == a*.yaml ]]; then
-            # Check for controller pods
-            CONTROLLER_POD=$(echo "${POD_OUTPUT}" | grep "controller")
+            # Check for controller pods using awk
+            CONTROLLER_POD=$(echo "${POD_OUTPUT}" | awk '/controller/')
+            echo "Debug: Controller pod output:"
+            echo "${CONTROLLER_POD}"
+            
             CONTROLLER_EXISTS=$(echo "${CONTROLLER_POD}" | wc -l)
             echo "Debug: Controller exists count: ${CONTROLLER_EXISTS}"
 
             if [ "${CONTROLLER_EXISTS}" -gt 0 ]; then
-                # If any controller pod exists, check if it's completed
                 CONTROLLER_COMPLETED=$(echo "${CONTROLLER_POD}" | grep "Completed" | wc -l)
                 echo "Debug: Controller completed count: ${CONTROLLER_COMPLETED}"
 
