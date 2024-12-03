@@ -21,19 +21,30 @@ for job_file in "${JOB_FILES[@]}"; do
     while true; do
         echo "Debug: Checking all pods related to job ${job_number}"
         kubectl get pods --no-headers | grep "${job_number}"
-        COMPLETED_WORKERS=$(kubectl get pods --no-headers | grep "${job_number}" | grep "worker" | grep "Completed" | wc -l)
-        TOTAL_WORKERS=$(kubectl get pods --no-headers | grep "${job_number}" | grep "worker" | wc -l)
+        
+        if [[ "${job_file}" == a*.yaml ]]; then
+            CONTROLLER_COMPLETED=$(kubectl get pods --no-headers | grep "${job_number}" | grep "controller-0" | grep "Completed" | wc -l)
+            if [ "${CONTROLLER_COMPLETED}" -gt 0 ]; then
+                echo "Controller pod for job ${job_number} is Completed."
+                echo "Deleting job: ${job_file}"
+                kubectl delete -f "${job_file}"
+                break
+            fi
+        else
+            COMPLETED_WORKERS=$(kubectl get pods --no-headers | grep "${job_number}" | grep "worker" | grep "Completed" | wc -l)
+            TOTAL_WORKERS=$(kubectl get pods --no-headers | grep "${job_number}" | grep "worker" | wc -l)
 
-        echo "Debug: Completed workers: ${COMPLETED_WORKERS} / Total workers: ${TOTAL_WORKERS}"
+            echo "Debug: Completed workers: ${COMPLETED_WORKERS} / Total workers: ${TOTAL_WORKERS}"
 
-        if [ "${COMPLETED_WORKERS}" -eq "${TOTAL_WORKERS}" ] && [ "${TOTAL_WORKERS}" -gt 0 ]; then
-            echo "All worker pods for job ${job_number} are Completed."
-            echo "Deleting job: ${job_file}"
-            kubectl delete -f "${job_file}"
-            break
+            if [ "${COMPLETED_WORKERS}" -eq "${TOTAL_WORKERS}" ] && [ "${TOTAL_WORKERS}" -gt 0 ]; then
+                echo "All worker pods for job ${job_number} are Completed."
+                echo "Deleting job: ${job_file}"
+                kubectl delete -f "${job_file}"
+                break
+            fi
         fi
 
-        echo "Waiting for worker pods of job ${job_number} to complete..."
+        echo "Waiting for pods of job ${job_number} to complete..."
         sleep 5
     done
 done
