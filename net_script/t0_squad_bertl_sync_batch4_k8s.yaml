@@ -1,0 +1,58 @@
+apiVersion: kubeflow.org/v1
+kind: "TFJob"
+metadata:
+  name: t0-squad-bertl-sync-batch4
+spec:
+  runPolicy:
+    cleanPodPolicy: None
+  tfReplicaSpecs:
+    WORKER:
+      replicas: 1
+      template:
+        spec:
+          containers:
+          - name: tensorflow
+            command: ["/bin/sh", "-c"]
+            env:
+            - name: ROOT_DATA_DIR
+              value: "/data"
+            args:
+              - JOB=`python /workspace/job_name.py`;
+                mkdir -p /result/t0_squad_bertl_sync_batch4;
+                echo "t0_squad_bertl_sync_batch4" > /workspace/model.txt;
+                STARTTIME=`date "+%H:%M:%S.%N"`; echo "$STARTTIME" > /result/t0_squad_bertl_sync_batch4/t0_squad_bertl_sync_batch4_${JOB}_start_time.txt;
+                top -d 0.1 -b | grep python > /result/t0_squad_bertl_sync_batch4/t0_squad_bertl_sync_batch4_${JOB}_cpu.txt
+                & nsys profile --duration=1200 -o /result/t0_squad_bertl_sync_batch4/t0_squad_bertl_sync_batch4_${JOB} --force-overwrite true python /workspace/nlp_jobs/bertl_single_squad.py;
+                ENDTIME=`date "+%H:%M:%S.%N"`; echo "$ENDTIME" > /result/t0_squad_bertl_sync_batch4/t0_squad_bertl_sync_batch4_${JOB}_end_time.txt
+            ports:
+              - containerPort: 2222
+                name: tfjob-port
+            image: potato4332/nlp-keras:0.0.1x
+            imagePullPolicy: IfNotPresent
+            resources:
+              requests:
+                cpu: 1
+                nvidia.com/gpu: 1
+              limits:
+                cpu: 5
+                nvidia.com/gpu: 1
+            volumeMounts:
+            - mountPath: /result
+              name: tfjob-data
+            - mountPath: /data
+              name: tfjob-dataset
+            - mountPath: /dev/shm
+              name: shmdir
+          volumes:
+          - name: tfjob-data
+            persistentVolumeClaim:
+              claimName: tfjob-data-volume-claim
+          - name: tfjob-dataset
+            persistentVolumeClaim:
+              claimName: tfjob-nfs-dataset-storage-claim
+          - name: shmdir
+            emptyDir:
+              medium: Memory
+              sizeLimit: "8G"
+          nodeSelector:
+              twonode: worker
