@@ -5,6 +5,20 @@
 import sys
 import argparse
 import os
+import pandas as pd
+
+def generate_train_trace_from_csv(csv_file_path):
+    # CSV 파일 읽기
+    df = pd.read_csv(csv_file_path)
+
+    # 필요한 열만 선택하고 job_id로 정렬
+    df = df.sort_values(by='job_id')[['model_info', 'gpu_workers', 'num_iteration']]
+
+    # 튜플 리스트 생성
+    train_trace = [(row['model_info'], row['gpu_workers'], row['num_iteration'])
+                   for _, row in df.iterrows()]
+
+    return train_trace
 
 # Xsailor local vs. GCP
 is_GCP = False
@@ -26,23 +40,13 @@ total_gpu_num = 4 * len(nodes) if nodes else 8
 print(f'Training with total gpu num: {total_gpu_num}')
 
 # [(model name, # of workers, # of iterations)]
-# Nov08trace_ar.txt
-# train_trace = [('alexnet', 2, 663), ('resnet56', 2, 442), ('resnet110', 2, 240), ('densenet100_k12', 2, 208),
-#                ('resnet44', 4, 362), ('densenet40_k12', 4, 146), ('resnet50', 4, 172), ('vgg16', 3, 70),
-#                ('inception3', 3, 207), ('googlenet', 3, 235)]
 
-# Nov12trace_ar.txt
-#train_trace = [('gpt2', 3, 522), ('resnet50', 2, 209), ('densenet40_k12', 2, 172), ('bert', 3, 403),
-#               ('densenet100_k12', 3, 168), ('gpt2', 2, 588), ('inception3', 4, 181), ('bert', 4, 405),
-#               ('gpt2', 2, 588), ('vgg16', 4, 64)]
+# train_trace = [('alexnet', 1, 10), ('alexnet', 2, 10), ('alexnet', 4, 10), ('alexnet', 8, 10), ('resnet110', 1, 10), ('resnet110', 2, 10), ('resnet110', 4, 10), ('resnet110', 8, 10), ('resnet44', 1, 10), ('resnet44', 2, 10), ('resnet44', 4, 10), ('resnet44', 8, 10), ('resnet56', 1, 10), ('resnet56', 2, 10), ('resnet56', 4, 10), ('resnet56', 8, 10), ('densenet40_k12', 1, 10), ('densenet40_k12', 2, 10), ('densenet40_k12', 4, 10), ('densenet40_k12', 8, 10), ('googlenet', 1, 10), ('googlenet', 2, 10), ('googlenet', 4, 10), ('googlenet', 8, 10), ('densenet100_k12', 1, 10), ('densenet100_k12', 2, 10), ('densenet100_k12', 4, 10), ('densenet100_k12', 8, 10), ('vgg16', 1, 10), ('vgg16', 2, 10), ('vgg16', 4, 10), ('vgg16', 8, 10), ('resnet50', 1, 10), ('resnet50', 2, 10), ('resnet50', 4, 10), ('resnet50', 8, 10), ('inception3', 1, 10), ('inception3', 2, 10), ('inception3', 4, 10), ('inception3', 8, 10), ('bert', 1, 10), ('bert', 2, 10), ('bert', 4, 10), ('bert', 8, 10), ('gpt2', 1, 10), ('gpt2', 2, 10), ('gpt2', 4, 10), ('gpt2', 8, 10)]
 
-# always pending1.txt
-#train_trace = [('resnet50', 3, 209), ('resnet50', 3, 209), ('gpt2', 2, 522)]
+csv_file_path = 'current_trace_100.csv'
+train_trace = generate_train_trace_from_csv(csv_file_path)
 
-# always pending2.txt
-#train_trace = [('gpt2', 2, 522), ('resnet50', 3, 209), ('resnet50', 3, 209)]
-
-train_trace = [('alexnet', 1, 10), ('alexnet', 2, 10), ('alexnet', 4, 10), ('alexnet', 8, 10), ('resnet110', 1, 10), ('resnet110', 2, 10), ('resnet110', 4, 10), ('resnet110', 8, 10), ('resnet44', 1, 10), ('resnet44', 2, 10), ('resnet44', 4, 10), ('resnet44', 8, 10), ('resnet56', 1, 10), ('resnet56', 2, 10), ('resnet56', 4, 10), ('resnet56', 8, 10), ('densenet40_k12', 1, 10), ('densenet40_k12', 2, 10), ('densenet40_k12', 4, 10), ('densenet40_k12', 8, 10), ('googlenet', 1, 10), ('googlenet', 2, 10), ('googlenet', 4, 10), ('googlenet', 8, 10), ('densenet100_k12', 1, 10), ('densenet100_k12', 2, 10), ('densenet100_k12', 4, 10), ('densenet100_k12', 8, 10), ('vgg16', 1, 10), ('vgg16', 2, 10), ('vgg16', 4, 10), ('vgg16', 8, 10), ('resnet50', 1, 10), ('resnet50', 2, 10), ('resnet50', 4, 10), ('resnet50', 8, 10), ('inception3', 1, 10), ('inception3', 2, 10), ('inception3', 4, 10), ('inception3', 8, 10), ('bert', 1, 10), ('bert', 2, 10), ('bert', 4, 10), ('bert', 8, 10), ('gpt2', 1, 10), ('gpt2', 2, 10), ('gpt2', 4, 10), ('gpt2', 8, 10)]
+print("train trace=", train_trace)
 
 CIFAR10_model = ("densenet40_k12", "densenet100_k12", "densenet100_k24","resnet20", "resnet32", "resnet44", "resnet56", "resnet110", "alexnet")
 ImageNet_model = ("overfeat", "inception3", "inception4", "resnet50", "resnet101", "resnet152", "googlenet", "vgg11", "vgg16", "vgg19")
@@ -122,6 +126,11 @@ model_skewness = {
     "resnet56": "2.3",
     "densenet100_k12": "1.9",
     "densenet40_k12": "1.9",
+    "gpt2": "4.8", # 여기부턴 아무 숫자나 넣음.
+    "gpt2l": "5.2",
+    "gpt2xl": "5.5",
+    "bert": "3.7",
+    "bertl": "4.1"
 }
 
 cpu_image="chiefmate/cv-cpu:0.0.1-network"
@@ -155,7 +164,11 @@ model_batch_size = {
     "resnet50": 128,
     "inception3": 64,
     "bert": 4,
+    "bertl": 4,
     "gpt2": 4,
+    "gpt2m": 4,
+    "gpt2l": 4,
+    "gpt2xl": 4,
 }
 
 def get_batch_size(model):

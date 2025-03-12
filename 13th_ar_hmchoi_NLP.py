@@ -1,16 +1,27 @@
 # Changes
 # - FCFS-based execution
 # - job 배치된 노드 기록
-# Last modified: Dec 15, 2024 by hmchoi - Added bertl, gpt2m, gpt2l, gpt2xl
 
 import sys
 import argparse
 import os
+import pandas as pd
+
+def generate_train_trace_from_csv(csv_file_path):
+    # CSV 파일 읽기
+    df = pd.read_csv(csv_file_path)
+
+    # 필요한 열만 선택하고 job_id로 정렬
+    df = df.sort_values(by='job_id')[['model_info', 'gpu_workers', 'num_iteration']]
+
+    # 튜플 리스트 생성
+    train_trace = [(row['model_info'], row['gpu_workers'], row['num_iteration'])
+                   for _, row in df.iterrows()]
+
+    return train_trace
 
 # Xsailor local vs. GCP
-role = os.getenv('ROLE', 'worker')  # 기본값은 worker
-
-is_GCP = True
+is_GCP = False
 nodes = []
 if is_GCP:
     nodes = ['xsailor-worker-t6', 'xsailor-worker-t7', 'xsailor-worker-t8', 'xsailor-worker-t9']
@@ -29,18 +40,17 @@ total_gpu_num = 4 * len(nodes) if nodes else 8
 print(f'Training with total gpu num: {total_gpu_num}')
 
 # [(model name, # of workers, # of iterations)]
-# Nov08trace_ar.txt
-# train_trace = [('alexnet', 2, 663), ('resnet56', 2, 442), ('resnet110', 2, 240), ('densenet100_k12', 2, 208),
-#                ('resnet44', 4, 362), ('densenet40_k12', 4, 146), ('resnet50', 4, 172), ('vgg16', 3, 70),
-#                ('inception3', 3, 207), ('googlenet', 3, 235)]
 
-# Nov12trace_ar.txt
-train_trace = [ ('bertl', 1, 10), ('bertl', 2, 10), ('bertl', 4, 10), ('bertl', 8, 10), ('gpt2m', 1, 10), ('gpt2m', 2, 10), ('gpt2m', 4, 10), ('gpt2m', 8, 10), ('gpt2l', 1, 10), ('gpt2l', 2, 10), ('gpt2l', 4, 10), ('gpt2l', 8, 10), ('gpt2xl', 1, 10), ('gpt2xl', 2, 10), ('gpt2xl', 4, 10), ('gpt2xl', 8, 10) ]
+# train_trace = [('alexnet', 1, 10), ('alexnet', 2, 10), ('alexnet', 4, 10), ('alexnet', 8, 10), ('resnet110', 1, 10), ('resnet110', 2, 10), ('resnet110', 4, 10), ('resnet110', 8, 10), ('resnet44', 1, 10), ('resnet44', 2, 10), ('resnet44', 4, 10), ('resnet44', 8, 10), ('resnet56', 1, 10), ('resnet56', 2, 10), ('resnet56', 4, 10), ('resnet56', 8, 10), ('densenet40_k12', 1, 10), ('densenet40_k12', 2, 10), ('densenet40_k12', 4, 10), ('densenet40_k12', 8, 10), ('googlenet', 1, 10), ('googlenet', 2, 10), ('googlenet', 4, 10), ('googlenet', 8, 10), ('densenet100_k12', 1, 10), ('densenet100_k12', 2, 10), ('densenet100_k12', 4, 10), ('densenet100_k12', 8, 10), ('vgg16', 1, 10), ('vgg16', 2, 10), ('vgg16', 4, 10), ('vgg16', 8, 10), ('resnet50', 1, 10), ('resnet50', 2, 10), ('resnet50', 4, 10), ('resnet50', 8, 10), ('inception3', 1, 10), ('inception3', 2, 10), ('inception3', 4, 10), ('inception3', 8, 10), ('bert', 1, 10), ('bert', 2, 10), ('bert', 4, 10), ('bert', 8, 10), ('gpt2', 1, 10), ('gpt2', 2, 10), ('gpt2', 4, 10), ('gpt2', 8, 10)]
 
+csv_file_path = 'current_trace_100.csv'
+train_trace = generate_train_trace_from_csv(csv_file_path)
+
+print("train trace=", train_trace)
 
 CIFAR10_model = ("densenet40_k12", "densenet100_k12", "densenet100_k24","resnet20", "resnet32", "resnet44", "resnet56", "resnet110", "alexnet")
 ImageNet_model = ("overfeat", "inception3", "inception4", "resnet50", "resnet101", "resnet152", "googlenet", "vgg11", "vgg16", "vgg19")
-SQuAD_model = ("bert", "bertl", "gpt2", "gpt2m", "gpt2l", "gpt2xl")
+SQuAD_model = ("bert","bertl","gpt2","gpt2m", "gpt2l", "gpt2xl",)
 
 # unit: MB/s
 # GCP AR -- ar_network_summary(Nov01)
@@ -78,24 +88,9 @@ model_bandwidth = {
     "squad_bert_sync_batch8": "1315",
     "squad_bert_sync_batch12": "1468",
     "squad_bert_sync_batch16": "1953",
-    "squad_bertl_sync_batch8": "1315", # bertl 도 임의로 넣음
-    "squad_bertl_sync_batch12": "1468",
-    "squad_bertl_sync_batch16": "1953",
     "squad_gpt2_sync_batch8": "997",
     "squad_gpt2_sync_batch12": "1895",
-    "squad_gpt2_sync_batch16": "2144", # 하단 gpt2m 부터는 임의로 넣음
-    "squad_gpt2m_sync_batch8": "997",
-    "squad_gpt2m_sync_batch12": "1895",
-    "squad_gpt2m_sync_batch16": "2144",
-    "squad_gpt2l_sync_batch8": "997",
-    "squad_gpt2l_sync_batch12": "1895",
-    "squad_gpt2l_sync_batch16": "2144",
-    "squad_gpt2xl_sync_batch8": "997",
-    "squad_gpt2xl_sync_batch12": "1895",
-    "squad_gpt2xl_sync_batch16": "2144",
-
-
-
+    "squad_gpt2_sync_batch16": "2144",
 } if is_GCP else {
     "cifar10_densenet100_k12_sync_batch32": "238",
     "cifar10_densenet100_k12_sync_batch48": "334",
@@ -115,22 +110,9 @@ model_bandwidth = {
     "squad_bert_sync_batch8": "5596",
     "squad_bert_sync_batch12": "8490",
     "squad_bert_sync_batch16": "11844",
-    "squad_bertl_sync_batch8": "1315", # bertl 도 임의로 넣음
-    "squad_bertl_sync_batch12": "1468",
-    "squad_bertl_sync_batch16": "1953",
     "imdb_gpt2_sync_batch8": "995",
     "imdb_gpt2_sync_batch12": "1988",
     "imdb_gpt2_sync_batch16": "1995",
-    "squad_gpt2m_sync_batch8": "997",
-    "squad_gpt2m_sync_batch12": "1895",
-    "squad_gpt2m_sync_batch16": "2144",
-    "squad_gpt2l_sync_batch8": "997",
-    "squad_gpt2l_sync_batch12": "1895",
-    "squad_gpt2l_sync_batch16": "2144",
-    "squad_gpt2xl_sync_batch8": "997",
-    "squad_gpt2xl_sync_batch12": "1895",
-    "squad_gpt2xl_sync_batch16": "2144",
-
 }
 
 model_skewness = {
@@ -144,11 +126,17 @@ model_skewness = {
     "resnet56": "2.3",
     "densenet100_k12": "1.9",
     "densenet40_k12": "1.9",
+    "gpt2": "4.8", # 여기부턴 아무 숫자나 넣음.
+    "gpt2m": "5.0",
+    "gpt2l": "5.2",
+    "gpt2xl": "5.5",
+    "bert": "3.7",
+    "bertl": "4.1"
 }
 
-cpu_image="potato4332/tf2-cpu-docker:0.5.0"
-gpu_image="potato4332/tf2-gpu-docker:0.4.0"
-squad_nlp_gpu_image = "potato4332/nlp-keras:0.0.1x"
+cpu_image="chiefmate/cv-cpu:0.0.1-network"
+gpu_image="chiefmate/cv-gpu:0.0.2-network"
+squad_nlp_gpu_image = "chiefmate/nlp-keras:0.0.1x"
 
 result_volume_claim = "tfjob-data-volume-claim"
 nlp_data_volume_claim = "tfjob-nfs-dataset-storage-claim"
@@ -198,7 +186,8 @@ def get_dataset(model):
     else:
         return "unknown"
 
-def create_job_config(id, model, worker_num, iter_num):
+# Example of how to update the main function to include the profiling option:
+def create_job_config(id, model, worker_num, iter_num, enable_profiling=False):
     dataset = get_dataset(model)
     batch_size = get_batch_size(model)
     job_name_no_id = f"{dataset}_{model}_sync_batch{batch_size * worker_num}"
@@ -206,7 +195,7 @@ def create_job_config(id, model, worker_num, iter_num):
     if bandwidth == 0:
         print(f'[WARNING] job {id}_{job_name_no_id}\'s bandwidth is zero')
 
-    job_name = f"t{id}-{dataset}-{model}-sync-batch{batch_size * worker_num}"  # worker_num includes chief worker (BERT, GPT2)
+    job_name = f"a{id}-{dataset}-{model}-sync-batch{batch_size * worker_num}"  # worker_num includes chief worker (BERT, GPT2)
     config = {
         'model_name': model,
         'dataset_name': dataset,
@@ -214,6 +203,7 @@ def create_job_config(id, model, worker_num, iter_num):
         'worker_num': worker_num,
         'network_bandwidth': bandwidth,
         'iter_num': iter_num,
+        'enable_profiling': enable_profiling,  # Add this field
     }
     return job_name, config
 
@@ -221,16 +211,22 @@ def save_yaml(data, filename):
     with open(filename, 'w') as file:
         file.write(data)
 
-def generate_squad_nlp_tfjob_yaml(job_name, job_config):
+def generate_squad_nlp_tfjob_yaml(job_name, job_config, enable_profiling=False):
     job_name = job_name.replace('_', '-')
-    #job_name = 'id0-imdb-gpt2-sync-batch16'
     job_name_ub = job_name.replace('-', '_')
     print(f'NLP job name: {job_name}')
     model_name = job_config['model_name']
     dataset_name = job_config['dataset_name']
     worker_num = job_config['worker_num']
-    worker_replica_num = worker_num - 1 if worker_num > 1 else worker_num       # subtract one if Chief exists
+    worker_replica_num = worker_num - 1 if worker_num > 1 else worker_num  # subtract one if Chief exists
     network_bandwidth = job_config['network_bandwidth']
+
+    # Get profiling duration (default 1200 seconds if enabled)
+    profiling_duration = 1200 if enable_profiling else 0
+
+    # Choose the image based on what's available in your environment
+    # squad_nlp_gpu_image = "chiefmate/nlp-keras:0.0.1x"  # Original
+    squad_nlp_gpu_image = "potato4332/nlp-keras:0.0.1x"  # From your example
 
     tfjob_template = f'''apiVersion: kubeflow.org/v1
 kind: "TFJob"
@@ -311,7 +307,13 @@ spec:
                 echo "{job_name_ub}" > /workspace/model.txt;
                 STARTTIME=`date "+%H:%M:%S.%N"`; echo "$STARTTIME" > /result/{job_name_ub}/{job_name_ub}_${{JOB}}_start_time.txt;
                 top -d 0.1 -b | grep python > /result/{job_name_ub}/{job_name_ub}_${{JOB}}_cpu.txt
-                & nsys profile --duration=1200 -o /result/{job_name_ub}/{job_name_ub}_${{JOB}} --force-overwrite true python /workspace/nlp_jobs/{model_name}_dist_squad.py;
+                & '''
+
+        # Add profiling if enabled
+        if enable_profiling:
+            tfjob_template += f'''nsys profile --duration={profiling_duration} -o /result/{job_name_ub}/{job_name_ub}_${{JOB}} --force-overwrite true '''
+
+        tfjob_template += f'''python /workspace/nlp_jobs/{model_name}_dist_squad.py;
                 ENDTIME=`date "+%H:%M:%S.%N"`; echo "$ENDTIME" > /result/{job_name_ub}/{job_name_ub}_${{JOB}}_end_time.txt
             ports:
               - containerPort: 2222
@@ -419,7 +421,13 @@ spec:
                 echo "{job_name_ub}" > /workspace/model.txt;
                 STARTTIME=`date "+%H:%M:%S.%N"`; echo "$STARTTIME" > /result/{job_name_ub}/{job_name_ub}_${{JOB}}_start_time.txt;
                 top -d 0.1 -b | grep python > /result/{job_name_ub}/{job_name_ub}_${{JOB}}_cpu.txt
-                & nsys profile --duration=1200 -o /result/{job_name_ub}/{job_name_ub}_${{JOB}} --force-overwrite true python /workspace/nlp_jobs/{model_name}_{'dist' if worker_num > 1 else 'single'}_squad.py;
+                & '''
+
+    # Add profiling if enabled
+    if enable_profiling:
+        tfjob_template += f'''nsys profile --duration={profiling_duration} -o /result/{job_name_ub}/{job_name_ub}_${{JOB}} --force-overwrite true '''
+
+    tfjob_template += f'''python /workspace/nlp_jobs/{model_name}_{'dist' if worker_num > 1 else 'single'}_squad.py;
                 ENDTIME=`date "+%H:%M:%S.%N"`; echo "$ENDTIME" > /result/{job_name_ub}/{job_name_ub}_${{JOB}}_end_time.txt
             ports:
               - containerPort: 2222
@@ -463,6 +471,8 @@ spec:
     save_yaml(tfjob_template, filename)
     return
 
+
+
 def generate_cnn_tfjob_yaml(job_name, job_config):
     job_name = job_name.replace('_', '-')
     #job_name = 'id0-cifar10-resnet56-sync-batch10'
@@ -482,14 +492,9 @@ def generate_cnn_tfjob_yaml(job_name, job_config):
     #     num_batches = 50
 
     if worker_num > 1:
-        # WORKER Command: nsys 포함
-        worker_command = f'nsys profile --duration=200 -o /result/{job_name_ub}/{job_name_ub}_${{JOB}} --force-overwrite true python /tf_cnn_benchmarks/tf_cnn_benchmarks.py --variable_update=distributed_all_reduce --model={model_name} --data_name={dataset_name} --display_every=1 --batch_size={batch_size} --cross_replica_sync=true --num_batches={num_batches} --num_warmup_batches=0 --controller_host=${{CONTROLLER_HOST}} --all_reduce_spec=nccl/xring;'
-
-        # CONTROLLER Command: nsys 제거
-        controller_command = f'python /tf_cnn_benchmarks/tf_cnn_benchmarks.py --variable_update=distributed_all_reduce --model={model_name} --data_name={dataset_name} --display_every=1 --batch_size={batch_size} --cross_replica_sync=true --num_batches={num_batches} --num_warmup_batches=0 --controller_host=${{CONTROLLER_HOST}} --all_reduce_spec=nccl/xring > /result/{job_name_ub}/{job_name_ub}_${{JOB}}_log.txt;'
+        command = f'python /tf_cnn_benchmarks/tf_cnn_benchmarks.py --variable_update=distributed_all_reduce --model={model_name} --data_name={dataset_name} --display_every=1 --batch_size={batch_size} --cross_replica_sync=true --num_batches={num_batches} --num_warmup_batches=0  --controller_host=${{CONTROLLER_HOST}} --all_reduce_spec=nccl/xring > /result/{job_name_ub}/{job_name_ub}_${{JOB}}_log.txt;'
     else:
-        # Single WORKER Case
-        worker_command = f'nsys profile --duration=200 -o /result/{job_name_ub}/{job_name_ub}_${{JOB}} --force-overwrite true python /tf_cnn_benchmarks/tf_cnn_benchmarks.py --variable_update=replicated --model={model_name} --data_name={dataset_name} --display_every=1 --batch_size={batch_size} --num_batches={num_batches} --num_warmup_batches=0;'
+        command = f'python /tf_cnn_benchmarks/tf_cnn_benchmarks.py --variable_update=replicated --model={model_name} --data_name={dataset_name} --display_every=1 --batch_size={batch_size} --num_batches={num_batches} --num_warmup_batches=0 > /result/{job_name_ub}/{job_name_ub}_${{JOB}}_log.txt;'
 
     tfjob_template = f'''apiVersion: kubeflow.org/v1
 kind: "TFJob"
@@ -576,7 +581,7 @@ spec:
                 echo "{job_name_ub}" > /tf_cnn_benchmarks/model.txt;
                 STARTTIME=`date "+%H:%M:%S.%N"`;
                 echo "$STARTTIME" > /result/{job_name_ub}/{job_name_ub}_${{JOB}}_start_time.txt;
-                {worker_command}
+                {command}
                 ENDTIME=`date "+%H:%M:%S.%N"`;
                 echo "$ENDTIME" > /result/{job_name_ub}/{job_name_ub}_${{JOB}}_end_time.txt
             ports:
@@ -666,7 +671,7 @@ spec:
                 mkdir -p /result/{job_name_ub};
                 echo "{job_name_ub}" > /tf_cnn_benchmarks/model.txt;
                 top -d 0.1 -b | grep tf_cnn > /result/{job_name_ub}/{job_name_ub}_${{JOB}}_cpu.txt &
-                {controller_command}
+                {command}
                 ENDTIME=`date "+%H:%M:%S.%N"`;
                 echo "$ENDTIME" > /result/{job_name_ub}/{job_name_ub}_${{JOB}}_end_time.txt
             ports:
@@ -862,20 +867,25 @@ do
 done""")
     print(template_end)
 
+# Then update the call to generate_squad_nlp_tfjob_yaml in your main code
 if __name__ == '__main__':
     print(f'scheduler: {scheduler_name}')
     print('variable update strategy: distributed_all_reduce')
     print(f'Total {len(train_trace)} jobs')
     # Create job configs
     job_configs = {}
+    enable_profiling = False  # Set to True if you want NSys profiling for all jobs
+
     for i, (model, worker_num, iter_num) in enumerate(train_trace):
-        job_name, config = create_job_config(i, model, worker_num, iter_num)
+        job_name, config = create_job_config(i, model, worker_num, iter_num, enable_profiling)
         job_configs[job_name] = config
+
     # Create yaml files
     for i, (job_name, job_config) in enumerate(job_configs.items()):
         if job_config['model_name'] in SQuAD_model:
-            generate_squad_nlp_tfjob_yaml(job_name, job_config)
+            generate_squad_nlp_tfjob_yaml(job_name, job_config, job_config.get('enable_profiling', False))
         else:
             generate_cnn_tfjob_yaml(job_name, job_config)
+
     # Create shell files
     create_shell_script(job_configs)
