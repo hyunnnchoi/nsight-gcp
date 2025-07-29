@@ -31,8 +31,25 @@ print(f'Training with total gpu num: {total_gpu_num}')
 # ('resnet110', 3, 809), ('resnet44', 3, 1686), ('resnet44', 3, 1727), ('googlenet', 3, 1108), ('googlenet', 1, 1441),
 # ('alexnet', 4, 3470), ('googlenet', 2, 1150), ('resnet110', 4, 701), ('densenet100_k12', 1, 795), ('vgg16', 1, 176),
 # ('inception3', 1, 415), ('inception3', 4, 292), ('resnet110', 2, 870), ('resnet50', 4, 365), ('resnet56', 2, 1593)]
-train_trace = [('alexnet', 2, 10), ('alexnet', 3, 10), ('alexnet', 4, 10), ('resnet110', 2, 10), ('resnet110', 3, 10), ('resnet110', 4, 10), ('resnet44', 2, 10), ('resnet44', 3, 10), ('resnet44', 4, 10), ('resnet56', 2, 10), ('resnet56', 3, 10), ('resnet56', 4, 10), ('densenet40_k12', 2, 10), ('densenet40_k12', 3, 10), ('densenet40_k12', 4, 10), ('googlenet', 2, 10), ('googlenet', 3, 10), ('googlenet', 4, 10), ('densenet100_k12', 2, 10), ('densenet100_k12', 3, 10), ('densenet100_k12', 4, 10), ('vgg16', 2, 10), ('vgg16', 3, 10), ('vgg16', 4, 10), ('resnet50', 2, 10), ('resnet50', 3, 10), ('resnet50', 4, 10), ('inception3', 2, 10), ('inception3', 3, 10), ('inception3', 4, 10), ('bert', 2, 10), ('bert', 3, 10), ('bert', 4, 10), ('gpt2', 2, 10), ('gpt2', 3, 10), ('gpt2', 4, 10) ]
+train_trace = [
+  ('densenet100_k12', 1, 600), ('densenet100_k12', 2, 600), ('densenet100_k12', 4, 600), ('densenet100_k12', 8, 600), 
+ ('densenet40_k12', 1, 600), ('densenet40_k12', 2, 600),('densenet40_k12', 4, 600),('densenet40_k12', 8, 600),
+ ('alexnet', 1, 600), ('alexnet', 2, 600), ('alexnet', 4, 600), ('alexnet', 8, 600),
+ ('resnet110', 1, 600), ('resnet110', 2, 600), ('resnet110', 4, 600), ('resnet110', 8, 600),
+ ('resnet44', 1, 600), ('resnet44', 2, 600), ('resnet44', 4, 600), ('resnet44', 8, 600),
+ ('googlenet', 1, 600), ('googlenet', 2, 600), ('googlenet', 4, 600), ('googlenet', 8, 600),
+ ('inception3', 1, 600), ('inception3', 2, 600), ('inception3', 4, 600), ('inception3', 8, 600),
+ ('densenet100_k12', 1, 1), ('densenet100_k12', 2, 1), ('densenet100_k12', 4, 1), ('densenet100_k12', 8, 1), 
+ ('densenet40_k12', 1, 1), ('densenet40_k12', 2, 1),('densenet40_k12', 4, 1),('densenet40_k12', 8, 1),
+ ('alexnet', 1, 1), ('alexnet', 2, 1), ('alexnet', 4, 1), ('alexnet', 8, 1),
+ ('resnet110', 1, 1), ('resnet110', 2, 1), ('resnet110', 4, 1), ('resnet110', 8, 1),
+ ('resnet44', 1, 1), ('resnet44', 2, 1), ('resnet44', 4, 1), ('resnet44', 8, 1),
+ ('googlenet', 1, 1), ('googlenet', 2, 1), ('googlenet', 4, 1), ('googlenet', 8, 1),
+ ('inception3', 1, 1), ('inception3', 2, 1), ('inception3', 4, 1), ('inception3', 8, 1)
+ ]
 
+# cifar10 5가지 (densenet100-k12, densenet40-k12, alexnet, resnet110, resnet44)
+# imagenet 2가지 (googlenet, inception3)
 
 CIFAR10_model = ("densenet40_k12", "densenet100_k12", "densenet100_k24","resnet20", "resnet32", "resnet44", "resnet56", "resnet110", "alexnet")
 ImageNet_model = ("overfeat", "inception3", "inception4", "resnet50", "resnet101", "resnet152", "googlenet", "vgg11", "vgg16", "vgg19")
@@ -113,8 +130,8 @@ model_skewness = {
     "densenet40_k12": "1.9",
 }
 
-cpu_image="potato4332/tf2-cpu-docker:0.4.0"
-gpu_image="potato4332/tf2-gpu-docker:0.4.0"
+cpu_image="potato4332/tf2-cpu-docker:0.5.5x"
+gpu_image="potato4332/tf2-gpu-docker:0.4.5x"
 
 result_volume_claim = "tfjob-data-volume-claim"
 nlp_data_volume_claim = "tfjob-nfs-dataset-storage-claim"
@@ -164,7 +181,7 @@ def create_job_config(id, model, worker_num, iter_num):
     job_name_no_id = f"{dataset}_{model}_sync_batch{batch_size * worker_num}"
     bandwidth = model_bandwidth.get(job_name_no_id, "0")
 
-    job_name = f"t{id}-{dataset}-{model}-sync-batch{batch_size * worker_num}"  # worker_num includes chief worker (BERT, GPT2)
+    job_name = f"id{id}-{dataset}-{model}-sync-batch{batch_size * worker_num}"  # worker_num includes chief worker (BERT, GPT2)
     config = {
         'model_name': model,
         'dataset_name': dataset,
@@ -202,10 +219,10 @@ def generate_cnn_tfjob_yaml(job_name, job_config):
     #     num_batches = 50
 
     if worker_num > 1:
-        worker_command = f'nsys profile --duration=120 -o /result/{job_name_ub}/{job_name_ub}_${{JOB}} --force-overwrite true python /tf_cnn_benchmarks/tf_cnn_benchmarks.py --variable_update=parameter_server --model={model_name} --data_name={dataset_name} --display_every=1 --batch_size={batch_size} --cross_replica_sync=true --num_batches={num_batches} --num_warmup_batches=0;'
+        worker_command = f'python /tf_cnn_benchmarks/tf_cnn_benchmarks.py --variable_update=parameter_server --model={model_name} --data_name={dataset_name} --display_every=1 --batch_size={batch_size} --cross_replica_sync=true --num_batches={num_batches} --num_warmup_batches=0;'
         ps_command = f'python /tf_cnn_benchmarks/tf_cnn_benchmarks.py --variable_update=parameter_server --model={model_name} --data_name={dataset_name} --display_every=1 --batch_size={batch_size} --cross_replica_sync=true --num_batches={num_batches} --num_warmup_batches=0 > /result/{job_name_ub}/{job_name_ub}_${{JOB}}_log.txt;'
     else:
-        worker_command = f'nsys profile --duration=120 -o /result/{job_name_ub}/{job_name_ub}_${{JOB}} --force-overwrite true python /tf_cnn_benchmarks/tf_cnn_benchmarks.py --variable_update=parameter_server --model={model_name} --data_name={dataset_name} --display_every=1 --batch_size={batch_size} --cross_replica_sync=true --num_batches={num_batches} --num_warmup_batches=0;'
+        worker_command = f'python /tf_cnn_benchmarks/tf_cnn_benchmarks.py --variable_update=parameter_server --model={model_name} --data_name={dataset_name} --display_every=1 --batch_size={batch_size} --cross_replica_sync=true --num_batches={num_batches} --num_warmup_batches=0;'
 
     tfjob_template = f'''apiVersion: kubeflow.org/v1
 kind: "TFJob"
