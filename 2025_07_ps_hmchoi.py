@@ -28,8 +28,8 @@ placement_policy_map = {
     'binpack': 'binpack'
 }
 
-def get_annotations(ps_num, worker_num, network_bandwidth, skewness=None):
-    """공통 어노테이션 생성 함수"""
+def get_worker_annotations(ps_num, worker_num, network_bandwidth, skewness=None):
+    """WORKER용 어노테이션 생성 함수 (GPU 관련 설정 포함)"""
     if scheduler_name == 'vol':
         return ''  # Volcano는 group-name만 필요
     
@@ -46,6 +46,29 @@ def get_annotations(ps_num, worker_num, network_bandwidth, skewness=None):
             "tensorspot/placement_policy": "{placement_policy_map[scheduler_name]}"'''
         
         # tiresias는 skewness_level 추가
+        if scheduler_name == 'tiresias' and skewness:
+            annotations += f'''
+            "tensorspot/skewness_level": "{skewness}"'''
+        
+        return annotations
+    
+    return ''
+
+def get_ps_annotations(ps_num, worker_num, network_bandwidth, skewness=None):
+    """PS용 어노테이션 생성 함수 (GPU 관련 설정 제외)"""
+    if scheduler_name == 'vol':
+        return ''  # Volcano는 group-name만 필요
+    
+    if scheduler_name in placement_policy_map:
+        annotations = f'''
+        metadata:
+          annotations:
+            "tensorspot/num_ps": "{ps_num}"
+            "tensorspot/num_worker": "{worker_num}"
+            "tensorspot/net_request": "{network_bandwidth}"
+            "tensorspot/placement_policy": "{placement_policy_map[scheduler_name]}"'''
+        
+        # tiresias는 skewness_level 추가 (PS에도 필요)
         if scheduler_name == 'tiresias' and skewness:
             annotations += f'''
             "tensorspot/skewness_level": "{skewness}"'''
@@ -258,7 +281,7 @@ spec:
           annotations:
             "scheduling.volcano.sh/group-name": {job_name}'''
     else:
-        tfjob_template += get_annotations(ps_num, worker_num, network_bandwidth, skewness)
+        tfjob_template += get_worker_annotations(ps_num, worker_num, network_bandwidth, skewness)
 
     tfjob_template += f'''
         spec:
@@ -322,7 +345,7 @@ spec:
           annotations:
             "scheduling.volcano.sh/group-name": {job_name}'''
         else:
-            tfjob_template += get_annotations(ps_num, worker_num, network_bandwidth, skewness)
+            tfjob_template += get_ps_annotations(ps_num, worker_num, network_bandwidth, skewness)
 
         tfjob_template += f'''
         spec:
